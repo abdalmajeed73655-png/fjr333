@@ -752,3 +752,102 @@
     margin: 0.5rem;
   }
 }
+
+/* زر إغلاق القائمة الجانبية المخصص لشاشات الهاتف */
+.sidebar-close-btn {
+  display: none;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 1.4rem;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;
+  transition: all 0.2s ease;
+}
+
+.sidebar-close-btn:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* شريط التنقل السفلي للهواتف الذكية بنمط وتجربة تطبيقات أندرويد (Mobile Bottom Navigation) */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #ffffff;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 40;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 0.5rem;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.35rem 0.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.bottom-nav-item .bottom-nav-icon {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.bottom-nav-item .bottom-nav-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bottom-nav-item:hover,
+.bottom-nav-item.active {
+  color: var(--primary-dark);
+}
+
+.bottom-nav-item.active .bottom-nav-icon {
+  transform: scale(1.15);
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 992px) {
+  .sidebar-close-btn {
+    display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  .main-content {
+    padding-bottom: 78px !important;
+  }
+}

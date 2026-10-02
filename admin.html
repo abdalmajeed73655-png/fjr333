@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -25,6 +25,7 @@
           مؤسسة الفجر
           <small>لوحة الإدارة الشاملة</small>
         </div>
+        <button type="button" class="sidebar-close-btn" id="sidebar-close-btn" aria-label="إغلاق القائمة">&times;</button>
       </div>
 
       <ul class="sidebar-menu">
@@ -533,32 +534,53 @@
               </form>
             </div>
 
-            <!-- إعدادات GPS الجغرافية -->
+            <!-- إعدادات GPS الجغرافية ونطاق الحضور السحابي -->
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title">📍 إعدادات الموقع الجغرافي (GPS)</h3>
+                <h3 class="card-title">📍 إعدادات الموقع الجغرافي (GPS) ونطاق الحضور</h3>
               </div>
-              <form id="form-setting-gps" onsubmit="event.preventDefault(); saveGpsSettings({ latitude: document.getElementById('setting-gps-lat').value, longitude: document.getElementById('setting-gps-lng').value, radius: document.getElementById('setting-gps-radius').value });">
+              <form id="form-setting-gps">
+                <!-- خيار الحضور السحابي من أي مكان -->
+                <div class="form-group" style="background: #f0fdf4; padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1.5px solid var(--primary-light); margin-bottom: 1rem;">
+                  <label class="remember-label" style="font-weight: 700; color: var(--primary-dark); cursor: pointer; display: flex; align-items: flex-start; gap: 0.5rem;">
+                    <input type="checkbox" id="setting-gps-allow-anywhere" style="margin-top: 3px;">
+                    <div>
+                      <span>🌐 السماح بتسجيل الحضور السحابي من أي مكان (عن بُعد)</span>
+                      <small style="display: block; font-weight: normal; color: var(--text-muted); margin-top: 0.2rem;">
+                        عند تفعيل هذا الخيار، يستطيع الموظف والمدير تسجيل الحضور من أي مكان وجهاز دون اشتراط التواجد داخل مقر المؤسسة.
+                      </small>
+                    </div>
+                  </label>
+                </div>
+
                 <div class="grid-2">
                   <div class="form-group">
                     <label class="form-label required">خط العرض (Latitude)</label>
-                    <input type="number" step="any" id="setting-gps-lat" class="form-control" required>
+                    <input type="number" step="any" id="setting-gps-lat" class="form-control" required placeholder="14.5424">
                   </div>
                   <div class="form-group">
                     <label class="form-label required">خط الطول (Longitude)</label>
-                    <input type="number" step="any" id="setting-gps-lng" class="form-control" required>
+                    <input type="number" step="any" id="setting-gps-lng" class="form-control" required placeholder="49.1248">
                   </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label required">نصف قطر التسجيل المسموح به (بالمتر)</label>
-                  <input type="number" id="setting-gps-radius" class="form-control" min="10" max="5000" required>
-                  <span class="form-hint">المسافة القصوى التي يُسمح للموظف بتسجيل الحضور منها (مثال: 100م).</span>
+                  <input type="number" id="setting-gps-radius" class="form-control" min="10" max="10000" required>
+                  <span class="form-hint">المسافة المسموحة عند فرض الحضور داخل المقر الجغرافي (مثال: 100م).</span>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                   <button type="button" class="btn btn-outline-primary btn-sm" onclick="handleGetAdminCurrentLocation()">
-                    📍 تحديد موقع المؤسسة الحالي من جهازي
+                    📍 التقاط موقعي الحالي (GPS)
                   </button>
-                  <button type="submit" class="btn btn-primary btn-sm">حفظ إعدادات GPS</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="handleSetDefaultMukallaLocation()">
+                    🏢 موقع المقر بالمكلا
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="handleOpenGoogleMapsPicker()">
+                    🗺️ خرائط Google
+                  </button>
+                  <button type="submit" class="btn btn-primary btn-sm" style="margin-right: auto;">
+                    💾 حفظ إعدادات الموقع
+                  </button>
                 </div>
               </form>
             </div>
@@ -616,6 +638,49 @@
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm">تحديث كلمة المرور</button>
               </form>
+            </div>
+
+            <!-- إعدادات الربط السحابي المباشر بـ Firebase -->
+            <div class="card" style="grid-column: 1 / -1;">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 class="card-title">☁️ الربط السحابي المباشر بـ Firebase (قاعدة بيانات موحدة لجميع الأجهزة)</h3>
+                <span id="firebase-status-badge" class="badge" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">جاري التحقق...</span>
+              </div>
+              <div style="padding: 1.25rem 0 0;">
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.15rem; line-height: 1.6;">
+                  يتيح هذا القسم ربط النظام بمشروعك السحابي في <strong>Firebase (Google Cloud)</strong> لتمكين الموظفين والمدير من تسجيل الدخول والحضور فورياً من أي هاتف أو حاسوب في أي مكان ومزامنة البيانات حياً عبر السحابة.
+                </p>
+                <form id="form-setting-firebase">
+                  <div class="grid-2">
+                    <div class="form-group">
+                      <label class="form-label required">مفتاح API السحابي (apiKey)</label>
+                      <input type="text" id="fb-cfg-api-key" class="form-control" placeholder="AIzaSy...">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label required">معرف المشروع (projectId)</label>
+                      <input type="text" id="fb-cfg-project-id" class="form-control" placeholder="al-fajr-charity">
+                    </div>
+                  </div>
+                  <div class="grid-3">
+                    <div class="form-group">
+                      <label class="form-label">نطاق المصادقة (authDomain)</label>
+                      <input type="text" id="fb-cfg-auth-domain" class="form-control" placeholder="your-project.firebaseapp.com">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">مخزن الملفات (storageBucket)</label>
+                      <input type="text" id="fb-cfg-storage-bucket" class="form-control" placeholder="your-project.appspot.com">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">معرف التطبيق (appId)</label>
+                      <input type="text" id="fb-cfg-app-id" class="form-control" placeholder="1:123456789:web:abcdef...">
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                    <button type="submit" class="btn btn-primary btn-sm">💾 حفظ وتفعيل الربط السحابي المباشر</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="handleResetFirebaseConfig()">🔄 استعادة الوضع التجريبي الافتراضي</button>
+                  </div>
+                </form>
+              </div>
             </div>
 
           </div>
@@ -848,5 +913,29 @@
       }
     }
   </script>
+
+  <!-- شريط التنقل السفلي المخصص للهواتف الذكية (Android Mobile Bottom Nav) -->
+  <nav class="mobile-bottom-nav" id="admin-bottom-nav">
+    <button type="button" class="bottom-nav-item active" data-view="dashboard">
+      <span class="bottom-nav-icon">🏠</span>
+      <span class="bottom-nav-label">الرئيسية</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-view="employees">
+      <span class="bottom-nav-icon">👥</span>
+      <span class="bottom-nav-label">الموظفون</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-view="attendance">
+      <span class="bottom-nav-icon">📋</span>
+      <span class="bottom-nav-label">الحضور</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-view="salaries">
+      <span class="bottom-nav-icon">💰</span>
+      <span class="bottom-nav-label">الرواتب</span>
+    </button>
+    <button type="button" class="bottom-nav-item" id="btn-admin-bottom-more">
+      <span class="bottom-nav-icon">☰</span>
+      <span class="bottom-nav-label">القائمة</span>
+    </button>
+  </nav>
 </body>
 </html>

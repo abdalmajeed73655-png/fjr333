@@ -1,19 +1,32 @@
-﻿/**
+/**
  * نظام مؤسسة الفجر الخيرية الاجتماعية
  * إعدادات وتكامل Firebase (Authentication, Firestore, Storage)
  * مطور الموقع: عبد المجيد عياش برديني (770905092)
  */
 
-// إعدادات Firebase الخاصة بالمشروع
-// استبدل هذه القيم ببيانات مشروعك الحقيقية من Firebase Console
-const firebaseConfig = {
-  apiKey: "AIzaSyD-PLACEHOLDER-ALFAJR-CHARITY-2026",
-  authDomain: "al-fajr-charity.firebaseapp.com",
-  projectId: "al-fajr-charity",
-  storageBucket: "al-fajr-charity.appspot.com",
-  messagingSenderId: "109876543210",
-  appId: "1:109876543210:web:abcdef123456789"
-};
+// جلب إعدادات Firebase الفعالة (من التخزين المحلي إذا قام المدير بربط مشروعه السحابي أو الافتراضية)
+function getActiveFirebaseConfig() {
+  try {
+    const saved = localStorage.getItem('alfajr_custom_firebase_config');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.apiKey && !parsed.apiKey.includes('PLACEHOLDER')) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
+  return {
+    apiKey: "AIzaSyD-PLACEHOLDER-ALFAJR-CHARITY-2026",
+    authDomain: "al-fajr-charity.firebaseapp.com",
+    projectId: "al-fajr-charity",
+    storageBucket: "al-fajr-charity.appspot.com",
+    messagingSenderId: "109876543210",
+    appId: "1:109876543210:web:abcdef123456789"
+  };
+}
+
+const firebaseConfig = getActiveFirebaseConfig();
 
 // فحص ما إذا كانت الإعدادات مفاتيح حقيقية أم تجريبية أولية
 const isPlaceholderMode = !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PLACEHOLDER");
@@ -36,10 +49,33 @@ if (!isPlaceholderMode && typeof firebase !== 'undefined') {
     });
 
     isFirebaseInitialized = true;
-    console.log('✅ تم الاتصال السحابي المباشر بـ Firebase بنجاح');
+    console.log('✅ تم الاتصال السحابي المباشر بـ Firebase بنجاح بمشروع:', firebaseConfig.projectId);
   } catch (e) {
     console.warn('خطأ تهيئة فايربيس السحابي:', e.message);
   }
+}
+
+// دوال إدارة الربط السحابي
+function saveCustomFirebaseConfig(config) {
+  if (!config || !config.apiKey || !config.projectId) {
+    throw new Error('يرجى ملء مفتاح API و Project ID على الأقل للربط السحابي');
+  }
+  localStorage.setItem('alfajr_custom_firebase_config', JSON.stringify(config));
+  return true;
+}
+
+function resetCustomFirebaseConfig() {
+  localStorage.removeItem('alfajr_custom_firebase_config');
+  return true;
+}
+
+function getFirebaseConnectionStatus() {
+  return {
+    isCloudActive: !isPlaceholderMode && isFirebaseInitialized,
+    isPlaceholder: isPlaceholderMode,
+    projectId: firebaseConfig.projectId || 'al-fajr-charity',
+    config: firebaseConfig
+  };
 }
 
 // ==========================================

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * نظام مؤسسة الفجر الخيرية الاجتماعية
  * إدارة إعدادات النظام (المؤسسة، الدوام، GPS، الرواتب، الإجازات، الحساب) (settings.js)
  * مطور الموقع: عبد المجيد عياش برديني (770905092)
@@ -35,7 +35,8 @@ async function loadAllSystemSettings() {
     const gps = gpsDoc.exists ? gpsDoc.data() : {
       latitude: 14.5424,
       longitude: 49.1248,
-      radius: 100
+      radius: 100,
+      allowAnywhere: false
     };
 
     const salary = salaryDoc.exists ? salaryDoc.data() : {
@@ -152,16 +153,19 @@ async function saveWorkSettings(data) {
 async function saveGpsSettings(data) {
   try {
     const gpsData = {
-      latitude: Number(data.latitude),
-      longitude: Number(data.longitude),
+      latitude: Number(data.latitude) || 14.5424,
+      longitude: Number(data.longitude) || 49.1248,
       radius: Number(data.radius) || 100,
+      allowAnywhere: Boolean(data.allowAnywhere),
       updatedAt: getServerTimestamp()
     };
 
     await db.collection('settings').doc('gpsSettings').set(gpsData, { merge: true });
-    await logActivity('تحديث إعدادات GPS', `تحديد موقع المؤسسة: (${data.latitude}, ${data.longitude}) بنصف قطر ${data.radius} متر`);
+    
+    const scopeDesc = gpsData.allowAnywhere ? 'تفعيل الحضور السحابي من أي مكان' : `نطاق جغرافي صارم (${gpsData.radius} متر)`;
+    await logActivity('تحديث إعدادات GPS', `تحديد موقع المؤسسة: (${gpsData.latitude}, ${gpsData.longitude}) - ${scopeDesc}`);
 
-    showToast('تم حفظ إعدادات الموقع الجغرافي ونصف القطر بنجاح', 'success');
+    showToast('تم حفظ إعدادات الموقع الجغرافي بنجاح (' + (gpsData.allowAnywhere ? 'حضور سحابي من أي مكان' : 'نطاق المقر') + ')', 'success');
     return true;
   } catch (error) {
     console.error('خطأ حفظ إعدادات GPS:', error);

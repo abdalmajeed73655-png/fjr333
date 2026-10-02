@@ -1,4 +1,4 @@
-﻿/**
+/**
  * نظام مؤسسة الفجر الخيرية الاجتماعية
  * وحدة تحكم لوحة الإدارة الشاملة (admin.js)
  * مطور الموقع: عبد المجيد عياش برديني (770905092)
@@ -64,11 +64,34 @@ function setupNavigation() {
     });
   }
 
+  // زر إغلاق القائمة الجانبية في رأس القائمة
+  const closeBtn = document.getElementById('sidebar-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      toggleSidebar(false);
+    });
+  }
+
   // إغلاق القائمة عند النقر على الخلفية المعتمة
   const backdrop = document.getElementById('sidebar-backdrop');
   if (backdrop) {
     backdrop.addEventListener('click', () => {
       toggleSidebar(false);
+    });
+  }
+
+  // شريط التنقل السفلي المخصص للهواتف بنمط تطبيقات أندرويد
+  document.querySelectorAll('#admin-bottom-nav .bottom-nav-item[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetView = btn.getAttribute('data-view');
+      if (targetView) switchView(targetView);
+    });
+  });
+
+  const moreBtn = document.getElementById('btn-admin-bottom-more');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => {
+      toggleSidebar(true);
     });
   }
 }
@@ -82,6 +105,15 @@ function switchView(viewName) {
       link.classList.add('active');
     } else {
       link.classList.remove('active');
+    }
+  });
+
+  // تحديث تمييز شريط التنقل السفلي للهواتف
+  document.querySelectorAll('#admin-bottom-nav .bottom-nav-item').forEach(btn => {
+    if (btn.getAttribute('data-view') === viewName) {
+      btn.classList.add('active');
+    } else if (btn.getAttribute('data-view')) {
+      btn.classList.remove('active');
     }
   });
 
@@ -1279,6 +1311,13 @@ async function populateSettingsForms() {
   document.getElementById('setting-gps-lat').value = settings.gps.latitude || 14.5424;
   document.getElementById('setting-gps-lng').value = settings.gps.longitude || 49.1248;
   document.getElementById('setting-gps-radius').value = settings.gps.radius || 100;
+  const allowAnywhereEl = document.getElementById('setting-gps-allow-anywhere');
+  if (allowAnywhereEl) {
+    allowAnywhereEl.checked = Boolean(settings.gps.allowAnywhere);
+  }
+
+  // تحديث وعرض حالة الربط السحابي مع Firebase
+  updateFirebaseStatusDisplay();
 
   // إعدادات الرواتب
   document.getElementById('setting-salary-days').value = settings.salary.approvedMonthDays || 30;
@@ -1308,13 +1347,95 @@ function renderLeaveTypesSettings(types) {
 
 async function handleGetAdminCurrentLocation() {
   try {
-    showToast('جاري تحديد إحداثيات موقعك الحالي عبر GPS...', 'info');
+    showToast('جاري التقاط إحداثيات موقعك الحالي عبر GPS...', 'info');
     const pos = await getCurrentDevicePosition();
-    document.getElementById('setting-gps-lat').value = pos.latitude;
-    document.getElementById('setting-gps-lng').value = pos.longitude;
-    showToast(`تم التقاط إحداثيات الموقع الحالي بدقة (${pos.accuracy} متر)`, 'success');
+    document.getElementById('setting-gps-lat').value = pos.latitude.toFixed(6);
+    document.getElementById('setting-gps-lng').value = pos.longitude.toFixed(6);
+    showToast(`تم التقاط إحداثيات الموقع الحالي بنجاح بدقة (${pos.accuracy} متر)`, 'success');
+  } catch (err) {
+    console.warn('GPS Error:', err);
+    showToast(`${err.message} - يمكنك النقر على "موقع المقر بالمكلا" أو إدخال الإحداثيات يدوياً`, 'warning');
+  }
+}
+
+function handleSetDefaultMukallaLocation() {
+  document.getElementById('setting-gps-lat').value = '14.542400';
+  document.getElementById('setting-gps-lng').value = '49.124800';
+  showToast('تم تعيين إحداثيات المقر الرئيسي بالمكلا (14.5424, 49.1248)', 'success');
+}
+
+function handleOpenGoogleMapsPicker() {
+  const lat = document.getElementById('setting-gps-lat').value || 14.5424;
+  const lng = document.getElementById('setting-gps-lng').value || 49.1248;
+  window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+}
+
+// عرض وتحديث حالة الربط السحابي
+function updateFirebaseStatusDisplay() {
+  const status = typeof getFirebaseConnectionStatus === 'function' ? getFirebaseConnectionStatus() : null;
+  const badge = document.getElementById('firebase-status-badge');
+  if (!status || !badge) return;
+
+  if (status.isCloudActive) {
+    badge.style.backgroundColor = '#16a34a';
+    badge.style.color = '#ffffff';
+    badge.textContent = `🟢 سحابي متصل حي (${status.projectId})`;
+  } else {
+    badge.style.backgroundColor = '#f59e0b';
+    badge.style.color = '#ffffff';
+    badge.textContent = '⚡ وضع الجاهزية المحلي (جاهز للربط السحابي)';
+  }
+
+  if (status.config) {
+    if (document.getElementById('fb-cfg-api-key') && !status.config.apiKey.includes('PLACEHOLDER')) {
+      document.getElementById('fb-cfg-api-key').value = status.config.apiKey;
+    }
+    if (document.getElementById('fb-cfg-project-id') && status.config.projectId !== 'al-fajr-charity') {
+      document.getElementById('fb-cfg-project-id').value = status.config.projectId;
+    }
+    if (document.getElementById('fb-cfg-auth-domain') && !status.config.authDomain.includes('al-fajr-charity')) {
+      document.getElementById('fb-cfg-auth-domain').value = status.config.authDomain;
+    }
+    if (document.getElementById('fb-cfg-storage-bucket') && !status.config.storageBucket.includes('al-fajr-charity')) {
+      document.getElementById('fb-cfg-storage-bucket').value = status.config.storageBucket;
+    }
+    if (document.getElementById('fb-cfg-app-id') && !status.config.appId.includes('109876543210')) {
+      document.getElementById('fb-cfg-app-id').value = status.config.appId;
+    }
+  }
+}
+
+async function handleSaveFirebaseConfig(e) {
+  e.preventDefault();
+  const apiKey = document.getElementById('fb-cfg-api-key').value.trim();
+  const projectId = document.getElementById('fb-cfg-project-id').value.trim();
+  const authDomain = document.getElementById('fb-cfg-auth-domain').value.trim() || `${projectId}.firebaseapp.com`;
+  const storageBucket = document.getElementById('fb-cfg-storage-bucket').value.trim() || `${projectId}.appspot.com`;
+  const appId = document.getElementById('fb-cfg-app-id').value.trim() || '1:123456789:web:abcdef';
+
+  if (!apiKey || !projectId) {
+    showToast('يرجى إدخال apiKey و projectId على الأقل للربط السحابي', 'warning');
+    return;
+  }
+
+  try {
+    saveCustomFirebaseConfig({ apiKey, projectId, authDomain, storageBucket, appId });
+    showToast('تم حفظ إعدادات Firebase بنجاح! جاري إعادة تشغيل النظام بالاتصال السحابي...', 'success');
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
   } catch (err) {
     showToast(err.message, 'danger');
+  }
+}
+
+function handleResetFirebaseConfig() {
+  if (confirm('هل ترغب في استعادة إعدادات الوضع المحلي الافتراضي؟')) {
+    resetCustomFirebaseConfig();
+    showToast('تمت استعادة الوضع الافتراضي بنجاح', 'info');
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
   }
 }
 
@@ -1329,6 +1450,25 @@ function setupEventListeners() {
 
   // نموذج إضافة/تعديل موظف
   document.getElementById('employee-form')?.addEventListener('submit', handleSaveEmployeeForm);
+
+  // نموذج إعدادات GPS الجغرافية والحضور السحابي
+  const gpsForm = document.getElementById('form-setting-gps');
+  if (gpsForm) {
+    gpsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const latitude = document.getElementById('setting-gps-lat').value;
+      const longitude = document.getElementById('setting-gps-lng').value;
+      const radius = document.getElementById('setting-gps-radius').value;
+      const allowAnywhere = document.getElementById('setting-gps-allow-anywhere')?.checked || false;
+      await saveGpsSettings({ latitude, longitude, radius, allowAnywhere });
+    });
+  }
+
+  // نموذج الربط السحابي مع Firebase
+  const fbForm = document.getElementById('form-setting-firebase');
+  if (fbForm) {
+    fbForm.addEventListener('submit', handleSaveFirebaseConfig);
+  }
 
   // معاينة وحفظ الشعار في إعدادات المؤسسة
   const logoInput = document.getElementById('setting-org-logo-file');

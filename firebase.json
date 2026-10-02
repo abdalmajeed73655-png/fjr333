@@ -7,14 +7,10 @@
       "firestore.indexes.json",
       "storage.rules",
       "README.md",
-      "**/.*"
+      "**/.*",
+      "*.bat"
     ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
+    "cleanUrls": false
   },
   "firestore": {
     "rules": "firestore.rules",

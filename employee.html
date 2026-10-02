@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -25,6 +25,7 @@
           مؤسسة الفجر
           <small>بوابة الموظف</small>
         </div>
+        <button type="button" class="sidebar-close-btn" id="emp-sidebar-close-btn" aria-label="إغلاق القائمة">&times;</button>
       </div>
 
       <ul class="sidebar-menu">
@@ -461,5 +462,29 @@
   <script src="js/leaves.js"></script>
   <script src="js/excuses.js"></script>
   <script src="js/employee.js"></script>
+
+  <!-- شريط التنقل السفلي المخصص للهواتف الذكية (Android Mobile Bottom Nav) -->
+  <nav class="mobile-bottom-nav" id="emp-bottom-nav">
+    <button type="button" class="bottom-nav-item active" data-tab="attendance-action">
+      <span class="bottom-nav-icon">📍</span>
+      <span class="bottom-nav-label">تسجيل الحضور</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-tab="my-attendance">
+      <span class="bottom-nav-icon">📋</span>
+      <span class="bottom-nav-label">حضوري</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-tab="my-salary">
+      <span class="bottom-nav-icon">💰</span>
+      <span class="bottom-nav-label">راتبي</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-tab="my-leaves">
+      <span class="bottom-nav-icon">🏖️</span>
+      <span class="bottom-nav-label">إجازاتي</span>
+    </button>
+    <button type="button" class="bottom-nav-item" id="btn-emp-bottom-more">
+      <span class="bottom-nav-icon">☰</span>
+      <span class="bottom-nav-label">المزيد</span>
+    </button>
+  </nav>
 </body>
 </html>

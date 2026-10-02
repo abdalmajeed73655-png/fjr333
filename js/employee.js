@@ -1,4 +1,4 @@
-﻿/**
+/**
  * نظام مؤسسة الفجر الخيرية الاجتماعية
  * وحدة تحكم بوابة الموظف (employee.js)
  * مطور الموقع: عبد المجيد عياش برديني (770905092)
@@ -424,30 +424,56 @@ function toggleEmployeeSidebar(forceState = null) {
   }
 }
 
+function switchEmployeeTab(tabId) {
+  if (!tabId) return;
+
+  // تحديث أزرار القائمة الجانبية
+  document.querySelectorAll('.sidebar-menu .nav-link[data-tab]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+  });
+
+  // تحديث أزرار شريط التنقل السفلي للهواتف
+  document.querySelectorAll('#emp-bottom-nav .bottom-nav-item').forEach(b => {
+    if (b.getAttribute('data-tab') === tabId) {
+      b.classList.add('active');
+    } else if (b.getAttribute('data-tab')) {
+      b.classList.remove('active');
+    }
+  });
+
+  // إظهار التبويب المحدد
+  document.querySelectorAll('.employee-tab-pane').forEach(pane => {
+    pane.style.display = (pane.id === `tab-pane-${tabId}`) ? 'block' : 'none';
+  });
+
+  // إغلاق القائمة في الشاشات الصغيرة
+  if (window.innerWidth <= 992) {
+    toggleEmployeeSidebar(false);
+  }
+}
+
 function setupEmployeeTabs() {
   const tabButtons = document.querySelectorAll('.sidebar-menu .nav-link[data-tab], .tabs-nav .tab-btn');
   tabButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const tabId = btn.getAttribute('data-tab');
-      if (tabId) {
-        // تحديث أزرار التنقل
-        document.querySelectorAll('.sidebar-menu .nav-link[data-tab]').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
-        });
-
-        // إظهار القسم المطلوب
-        document.querySelectorAll('.employee-tab-pane').forEach(pane => {
-          pane.style.display = (pane.id === `tab-pane-${tabId}`) ? 'block' : 'none';
-        });
-
-        // إغلاق القائمة في الشاشات الصغيرة
-        if (window.innerWidth <= 992) {
-          toggleEmployeeSidebar(false);
-        }
-      }
+      if (tabId) switchEmployeeTab(tabId);
     });
   });
+
+  // شريط التنقل السفلي للهواتف بنمط أندرويد
+  document.querySelectorAll('#emp-bottom-nav .bottom-nav-item[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.getAttribute('data-tab');
+      if (tabId) switchEmployeeTab(tabId);
+    });
+  });
+
+  const moreBtn = document.getElementById('btn-emp-bottom-more');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => toggleEmployeeSidebar(true));
+  }
 
   // زر القائمة في الهاتف
   const menuBtn = document.getElementById('menu-toggle');
@@ -458,6 +484,14 @@ function setupEmployeeTabs() {
     });
   }
 
+  // زر إغلاق القائمة الجانبية في رأس القائمة
+  const closeBtn = document.getElementById('emp-sidebar-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      toggleEmployeeSidebar(false);
+    });
+  }
+
   // إغلاق القائمة عند النقر على الخلفية المعتمة
   const backdrop = document.getElementById('sidebar-backdrop');
   if (backdrop) {
@@ -465,7 +499,7 @@ function setupEmployeeTabs() {
       toggleEmployeeSidebar(false);
     });
   }
-
+}
   // فلاتر فترة الراتب
   document.querySelectorAll('input[name="salary-period-radio"]').forEach(radio => {
     radio.addEventListener('change', (e) => {

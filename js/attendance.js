@@ -1,4 +1,4 @@
-﻿/**
+/**
  * نظام مؤسسة الفجر الخيرية الاجتماعية
  * محرك تسجيل الحضور والانصراف والتحقق من GPS وحساب التأخير الدقيق (attendance.js)
  * مطور الموقع: عبد المجيد عياش برديني (770905092)
@@ -58,7 +58,7 @@ async function getSalarySettings() {
 }
 
 /**
- * الحصول على الموقع الجغرافي الحالي للجهاز بدقة عالية
+ * الحصول على الموقع الجغرافي الحالي للجهاز بمرونة عالية ودعم Fallback ذكي
  */
 function getCurrentDevicePosition() {
   return new Promise((resolve, reject) => {
@@ -67,6 +67,7 @@ function getCurrentDevicePosition() {
       return;
     }
 
+    // 1. المحاولة الأولى: دقة عالية (Satellite GPS) بمهلة سريعة 5 ثوانٍ
     navigator.geolocation.getCurrentPosition(
       (position) => {
         resolve({
@@ -76,25 +77,41 @@ function getCurrentDevicePosition() {
           timestamp: position.timestamp
         });
       },
-      (error) => {
-        let msg = 'تعذر الحصول على موقع GPS';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            msg = 'تم رفض إذن الوصول إلى موقع GPS. يرجى تفعيل إذن الموقع بالمتصفح للمتابعة';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            msg = 'معلومات الموقع الجغرافي غير متوفرة حالياً';
-            break;
-          case error.TIMEOUT:
-            msg = 'انتهت مهلة طلب تحديد موقع GPS. يرجى المحاولة مرة أخرى';
-            break;
-        }
-        reject(new Error(msg));
+      (errHigh) => {
+        console.warn('تنبيه GPS عالي الدقة، جاري التبديل للموقع عبر الشبكة/Wi-Fi...', errHigh.message);
+        
+        // 2. المحاولة البديلة: دقة عادية (Wi-Fi / Cell tower) تعمل بنجاح داخل المباني وعلى الهواتف والحواسيب
+        navigator.geolocation.getCurrentPosition(
+          (posFallback) => {
+            resolve({
+              latitude: posFallback.coords.latitude,
+              longitude: posFallback.coords.longitude,
+              accuracy: Math.round(posFallback.coords.accuracy),
+              timestamp: posFallback.timestamp
+            });
+          },
+          (errLow) => {
+            let msg = 'تعذر الحصول على موقع GPS';
+            if (errLow.code === errLow.PERMISSION_DENIED) {
+              msg = 'تم رفض إذن الوصول إلى موقع GPS في المتصفح. يرجى تفعيل إذن الموقع (Location) من إعدادات المتصفح أو قفل شريط العنوان';
+            } else if (errLow.code === errLow.POSITION_UNAVAILABLE) {
+              msg = 'خدمة الموقع غير متوفرة حالياً، يرجى تشغيل الـ GPS بالهاتف';
+            } else if (errLow.code === errLow.TIMEOUT) {
+              msg = 'انتهت مهلة طلب تحديد موقع GPS. يرجى المحاولة مجدداً';
+            }
+            reject(new Error(msg));
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 9000,
+            maximumAge: 300000
+          }
+        );
       },
       {
         enableHighAccuracy: true,
-        timeout: 12000,
-        maximumAge: 0
+        timeout: 5000,
+        maximumAge: 10000
       }
     );
   });
@@ -242,20 +259,29 @@ async function performCheckIn(employeeId) {
       return false;
     }
 
-    // 3. الحصول على موقع جهاز الموظف
-    const devicePos = await getCurrentDevicePosition();
+    // 3. الحصول على موقع جهاز الموظف والتحقق من النطاق الجغرافي أو السحابي
+    const allowAnywhere = Boolean(gpsSettings.allowAnywhere) || Number(gpsSettings.radius) <= 0;
+    let devicePos = { latitude: null, longitude: null, accuracy: 0 };
+    let distanceMeters = 0;
 
-    // 4. حساب المسافة إلى مقر المؤسسة عبر معادلة Haversine
-    const distanceMeters = calculateHaversineDistance(
-      devicePos.latitude,
-      devicePos.longitude,
-      gpsSettings.latitude,
-      gpsSettings.longitude
-    );
+    try {
+      devicePos = await getCurrentDevicePosition();
+      distanceMeters = calculateHaversineDistance(
+        devicePos.latitude,
+        devicePos.longitude,
+        gpsSettings.latitude,
+        gpsSettings.longitude
+      );
+    } catch (gpsErr) {
+      if (!allowAnywhere) {
+        throw new Error(`تعذر تحديد موقع GPS: ${gpsErr.message}. يرجى تفعيل الموقع للتسجيل من داخل المقر.`);
+      }
+      console.warn('تجاوز خطأ GPS بسبب تفعيل خيار الحضور السحابي من أي مكان:', gpsErr.message);
+    }
 
-    // 5. التحقق من النطاق الجغرافي المسموح به
+    // التحقق من النطاق الجغرافي إذا كان التحقق الصارم مفعلاً
     const allowedRadius = Number(gpsSettings.radius) || 100;
-    if (distanceMeters > allowedRadius) {
+    if (!allowAnywhere && distanceMeters > allowedRadius) {
       const errorMsg = `🔴 لا يمكن تسجيل الحضور! أنت على بعد (${distanceMeters} متر) من المؤسسة. النطاق الأقصى المسموح به هو (${allowedRadius} متر). يرجى التواجد داخل مقر المؤسسة.`;
       showToast(errorMsg, 'danger', 'خارج النطاق الجغرافي');
       return false;
@@ -277,11 +303,12 @@ async function performCheckIn(employeeId) {
       checkOut: null,
       checkOutTimeStr: null,
       
-      // بيانات GPS الدقيقة
+      // بيانات GPS أو الحضور السحابي
       latitude: devicePos.latitude,
       longitude: devicePos.longitude,
       accuracy: devicePos.accuracy,
       distance: distanceMeters,
+      isRemoteCheckIn: allowAnywhere && (distanceMeters > allowedRadius || !devicePos.latitude),
       
       // بيانات التأخير والخصم
       lateSeconds: lateInfo.lateSeconds,
@@ -299,14 +326,15 @@ async function performCheckIn(employeeId) {
     await db.collection('attendance').doc(recordId).set(attendanceData, { merge: true });
 
     // تسجيل في Audit Log
-    let logMsg = `حضور عادي في الوقت المحدد (المسافة ${distanceMeters}م)`;
+    const locDesc = attendanceData.isRemoteCheckIn ? 'تسجيل سحابي من أي مكان' : `داخل المقر (${distanceMeters}م)`;
+    let logMsg = `حضور عادي في الوقت المحدد (${locDesc})`;
     if (lateInfo.isLate) {
-      logMsg = `حضور متأخر (${formatSecondsToArabicDuration(lateInfo.chargeableLateSeconds)}) - الخصم: ${formatCurrency(deduction)}`;
+      logMsg = `حضور متأخر (${formatSecondsToArabicDuration(lateInfo.chargeableLateSeconds)}) - الخصم: ${formatCurrency(deduction)} (${locDesc})`;
     }
     await logActivity('تسجيل حضور', `الموظف: ${employee.name} - ${logMsg}`);
 
     // إشعار نجاح فوري للموظف
-    const successMsg = `🟢 تم تسجيل الحضور بنجاح | الوقت: ${formatDisplayTime(now)} | الموقع: داخل نطاق المؤسسة (${distanceMeters}م)`;
+    const successMsg = `🟢 تم تسجيل الحضور بنجاح | الوقت: ${formatDisplayTime(now)} | الموقع: ${locDesc}`;
     showToast(successMsg, 'success', 'تسجيل حضور ناجح');
 
     return true;
@@ -353,19 +381,28 @@ async function performCheckOut(employeeId) {
     ]);
 
     // 3. الحصول على موقع الجهاز
-    const devicePos = await getCurrentDevicePosition();
+    const allowAnywhere = Boolean(gpsSettings.allowAnywhere) || Number(gpsSettings.radius) <= 0;
+    let devicePos = { latitude: null, longitude: null, accuracy: 0 };
+    let distanceMeters = 0;
 
-    // 4. حساب المسافة إلى المؤسسة
-    const distanceMeters = calculateHaversineDistance(
-      devicePos.latitude,
-      devicePos.longitude,
-      gpsSettings.latitude,
-      gpsSettings.longitude
-    );
+    try {
+      devicePos = await getCurrentDevicePosition();
+      distanceMeters = calculateHaversineDistance(
+        devicePos.latitude,
+        devicePos.longitude,
+        gpsSettings.latitude,
+        gpsSettings.longitude
+      );
+    } catch (gpsErr) {
+      if (!allowAnywhere) {
+        throw new Error(`تعذر تحديد موقع GPS: ${gpsErr.message}. يرجى تفعيل الموقع للانصراف داخل المقر.`);
+      }
+      console.warn('تجاوز GPS بسبب تفعيل الحضور السحابي:', gpsErr.message);
+    }
 
     // 5. التحقق من النطاق
     const allowedRadius = Number(gpsSettings.radius) || 100;
-    if (distanceMeters > allowedRadius) {
+    if (!allowAnywhere && distanceMeters > allowedRadius) {
       const errorMsg = `🔴 لا يمكن تسجيل الانصراف! أنت على بعد (${distanceMeters} متر) من المؤسسة. النطاق المسموح به هو (${allowedRadius} متر).`;
       showToast(errorMsg, 'danger', 'خارج النطاق الجغرافي');
       return false;
@@ -376,6 +413,10 @@ async function performCheckOut(employeeId) {
     const earlyInfo = calculateEarlyDeparture(now, workSettings);
 
     // 7. تحديث وثيقة الحضور في Firestore
+    const locDesc = (allowAnywhere && (distanceMeters > allowedRadius || !devicePos.latitude))
+      ? 'انصراف سحابي من أي مكان'
+      : `داخل المقر (${distanceMeters}م)`;
+
     const updateData = {
       checkOut: getServerTimestamp(),
       checkOutTimeStr: dateToTimeString(now),
@@ -392,11 +433,11 @@ async function performCheckOut(employeeId) {
     await db.collection('attendance').doc(recordId).update(updateData);
 
     const logDetails = earlyInfo.isEarly
-      ? `انصراف مبكر قبل نهاية الدوام بمقدار (${formatSecondsToArabicDuration(earlyInfo.earlyLeaveSeconds)})`
-      : 'انصراف نظامي في نهاية الدوام';
+      ? `انصراف مبكر بمقدار (${formatSecondsToArabicDuration(earlyInfo.earlyLeaveSeconds)}) - ${locDesc}`
+      : `انصراف نظامي في نهاية الدوام - ${locDesc}`;
     await logActivity('تسجيل انصراف', `الموظف: ${currentRecord.employeeName} - ${logDetails}`);
 
-    showToast(`🟠 تم تسجيل الانصراف بنجاح | الوقت: ${formatDisplayTime(now)}`, 'success', 'تسجيل انصراف');
+    showToast(`🟠 تم تسجيل الانصراف بنجاح | الوقت: ${formatDisplayTime(now)} | الموقع: ${locDesc}`, 'success', 'تسجيل انصراف');
     return true;
   } catch (error) {
     console.error('خطأ تسجيل الانصراف:', error);
