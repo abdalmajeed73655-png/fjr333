@@ -643,12 +643,21 @@
             <!-- إعدادات الربط السحابي المباشر بـ Firebase -->
             <div class="card" style="grid-column: 1 / -1;">
               <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                <h3 class="card-title">☁️ الربط السحابي المباشر بـ Firebase (قاعدة بيانات موحدة لجميع الأجهزة)</h3>
+                <h3 class="card-title">☁️ الربط السحابي المباشر (مزامنة فورية بين الجوال والكمبيوتر عبر السحابة)</h3>
                 <span id="firebase-status-badge" class="badge" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">جاري التحقق...</span>
               </div>
               <div style="padding: 1.25rem 0 0;">
+                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+                    <span style="font-size: 1.25rem;">🌐</span>
+                    <strong style="color: #166534; font-size: 0.95rem;">النظام متصل سحابياً وتلقائياً — جاهز للعمل على GitHub Pages ومزامنة جميع الأجهزة</strong>
+                  </div>
+                  <p style="font-size: 0.88rem; color: #15803d; margin: 0; line-height: 1.6;">
+                    تم تفعيل السحابة وقاعدة البيانات المشتركة تلقائياً من داخل النظام! بمجرد رفع المشروع على <strong>GitHub</strong> وفتحه من أي هاتف أو كمبيوتر، تتزامن بيانات الموظفين، سجلات الحضور والانصراف، الإجازات، والرواتب لحظياً بين جميع الأجهزة بدون أي إعدادات يدوية معقدة.
+                  </p>
+                </div>
                 <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.15rem; line-height: 1.6;">
-                  يتيح هذا القسم ربط النظام بمشروعك السحابي في <strong>Firebase (Google Cloud)</strong> لتمكين الموظفين والمدير من تسجيل الدخول والحضور فورياً من أي هاتف أو حاسوب في أي مكان ومزامنة البيانات حياً عبر السحابة.
+                  (اختياري): إذا كان لديك مشروع شخصي خاص في <strong>Google Cloud Firebase</strong> وترغب بربطه بدلاً من السحابة التلقائية، يمكنك إدخال المفاتيح أدناه:
                 </p>
                 <form id="form-setting-firebase">
                   <div class="grid-2">

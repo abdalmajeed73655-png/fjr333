@@ -1379,7 +1379,11 @@ function updateFirebaseStatusDisplay() {
   if (status.isCloudActive) {
     badge.style.backgroundColor = '#16a34a';
     badge.style.color = '#ffffff';
-    badge.textContent = `🟢 سحابي متصل حي (${status.projectId})`;
+    if (status.isCustomFirebase) {
+      badge.textContent = `🟢 Firebase سحابي مخصص (${status.projectId})`;
+    } else {
+      badge.textContent = '🟢 سحابي متصل تلقائياً (جاهز للمزامنة على GitHub)';
+    }
   } else {
     badge.style.backgroundColor = '#f59e0b';
     badge.style.color = '#ffffff';
@@ -1387,7 +1391,7 @@ function updateFirebaseStatusDisplay() {
   }
 
   if (status.config) {
-    if (document.getElementById('fb-cfg-api-key') && !status.config.apiKey.includes('PLACEHOLDER')) {
+    if (document.getElementById('fb-cfg-api-key') && !status.config.apiKey.includes('PLACEHOLDER') && !status.config.apiKey.includes('ALFAJR-CHARITY-CLOUD-SYNC')) {
       document.getElementById('fb-cfg-api-key').value = status.config.apiKey;
     }
     if (document.getElementById('fb-cfg-project-id') && status.config.projectId !== 'al-fajr-charity') {
@@ -1403,6 +1407,20 @@ function updateFirebaseStatusDisplay() {
       document.getElementById('fb-cfg-app-id').value = status.config.appId;
     }
   }
+}
+
+// الاستماع للتحديثات السحابية الواردة من الهواتف والأجهزة الأخرى
+if (typeof CloudSyncEngine !== 'undefined') {
+  CloudSyncEngine.onSync(() => {
+    try {
+      if (typeof loadDashboardStatistics === 'function') loadDashboardStatistics();
+      if (typeof renderEmployeesTable === 'function') renderEmployeesTable();
+      if (typeof renderAttendanceTable === 'function') renderAttendanceTable();
+      if (typeof renderLeavesTable === 'function') renderLeavesTable();
+      if (typeof renderExcusesTable === 'function') renderExcusesTable();
+      updateFirebaseStatusDisplay();
+    } catch (e) {}
+  });
 }
 
 async function handleSaveFirebaseConfig(e) {

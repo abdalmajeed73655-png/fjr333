@@ -534,3 +534,16 @@ function setupEmployeeForms() {
   if (leaveEnd) leaveEnd.value = today;
   if (excuseDate) excuseDate.value = today;
 }
+
+// الاستماع للتحديثات السحابية الواردة لتحديث حالة الموظف ورصيد الإجازات
+if (typeof CloudSyncEngine !== 'undefined') {
+  CloudSyncEngine.onSync(() => {
+    try {
+      if (typeof checkTodayAttendanceStatus === 'function') checkTodayAttendanceStatus();
+      if (typeof loadMyLeavesList === 'function') loadMyLeavesList();
+      if (typeof loadMyExcusesList === 'function') loadMyExcusesList();
+      if (typeof loadMyAttendanceHistory === 'function') loadMyAttendanceHistory();
+    } catch (e) {}
+  });
+}
+

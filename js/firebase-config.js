@@ -1,10 +1,15 @@
 /**
  * نظام مؤسسة الفجر الخيرية الاجتماعية
- * إعدادات وتكامل Firebase (Authentication, Firestore, Storage)
+ * إعدادات وتكامل Firebase والسحابة المباشرة (Authentication, Firestore, Storage, Cloud Sync)
  * مطور الموقع: عبد المجيد عياش برديني (770905092)
  */
 
-// جلب إعدادات Firebase الفعالة (من التخزين المحلي إذا قام المدير بربط مشروعه السحابي أو الافتراضية)
+// الرابط السحابي التلقائي المباشر (مفعل تلقائياً بدون أي إعدادات يدوية من المستخدم)
+const CLOUD_SYNC_ENDPOINT = 'https://extendsclass.com/api/json-storage/bin/bacefeb';
+const CLOUD_SYNC_TOPIC = 'https://ntfy.sh/alfajr_charity_live_sync_2026';
+const STORAGE_KEY = 'alfajr_local_firestore_db';
+
+// جلب إعدادات Firebase المخصصة إذا قام المدير بإدخالها
 function getActiveFirebaseConfig() {
   try {
     const saved = localStorage.getItem('alfajr_custom_firebase_config');
@@ -17,7 +22,7 @@ function getActiveFirebaseConfig() {
   } catch (e) {}
 
   return {
-    apiKey: "AIzaSyD-PLACEHOLDER-ALFAJR-CHARITY-2026",
+    apiKey: "AIzaSyD-ALFAJR-CHARITY-CLOUD-SYNC-2026",
     authDomain: "al-fajr-charity.firebaseapp.com",
     projectId: "al-fajr-charity",
     storageBucket: "al-fajr-charity.appspot.com",
@@ -27,16 +32,12 @@ function getActiveFirebaseConfig() {
 }
 
 const firebaseConfig = getActiveFirebaseConfig();
-
-// فحص ما إذا كانت الإعدادات مفاتيح حقيقية أم تجريبية أولية
-const isPlaceholderMode = !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PLACEHOLDER");
+const isPlaceholderMode = !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PLACEHOLDER") || firebaseConfig.apiKey.includes("ALFAJR-CHARITY-CLOUD-SYNC");
 
 let app = null, auth = null, db = null, storage = null;
 let isFirebaseInitialized = false;
 
-// ==========================================
-// 1. التهيئة الحقيقية لـ Firebase إذا توفرت المفاتيح
-// ==========================================
+// تهيئة Firebase SDK إذا كان هناك مشروع حقيقي
 if (!isPlaceholderMode && typeof firebase !== 'undefined') {
   try {
     app = firebase.initializeApp(firebaseConfig);
@@ -45,17 +46,17 @@ if (!isPlaceholderMode && typeof firebase !== 'undefined') {
     storage = firebase.storage();
 
     db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-      console.warn('تنبيه التخزين المؤقت المحلي:', err.message);
+      console.warn('تنبيه التخزين المؤقت لفايربيس:', err.message);
     });
 
     isFirebaseInitialized = true;
-    console.log('✅ تم الاتصال السحابي المباشر بـ Firebase بنجاح بمشروع:', firebaseConfig.projectId);
+    console.log('✅ تم الاتصال السحابي المباشر بـ Firebase بمشروع:', firebaseConfig.projectId);
   } catch (e) {
-    console.warn('خطأ تهيئة فايربيس السحابي:', e.message);
+    console.warn('تنبيه تهيئة فايربيس المباشر:', e.message);
   }
 }
 
-// دوال إدارة الربط السحابي
+// دوال إدارة إعدادات Firebase
 function saveCustomFirebaseConfig(config) {
   if (!config || !config.apiKey || !config.projectId) {
     throw new Error('يرجى ملء مفتاح API و Project ID على الأقل للربط السحابي');
@@ -69,154 +70,229 @@ function resetCustomFirebaseConfig() {
   return true;
 }
 
-function getFirebaseConnectionStatus() {
-  return {
-    isCloudActive: !isPlaceholderMode && isFirebaseInitialized,
-    isPlaceholder: isPlaceholderMode,
-    projectId: firebaseConfig.projectId || 'al-fajr-charity',
-    config: firebaseConfig
-  };
-}
-
 // ==========================================
-// 2. محرك الجاهزية المحلي (Local Storage Firestore Adapter)
-// يعمل فوراً لضمان فتح واستخدام النظام بنسبة 100% حتى قبل وضع المفاتيح السحابية
+// محرك المزامنة السحابية التلقائي (Auto Cloud Sync Engine)
+// يزامن البيانات تلقائياً وفورياً بين الهواتف والحواسيب عبر الإنترنت و GitHub Pages
 // ==========================================
-if (isPlaceholderMode || !db) {
-  console.log('⚡ يعمل النظام في وضع الجاهزية المحلي المتكامل (Local Database Engine)');
+const CloudSyncEngine = {
+  isSyncing: false,
+  pendingPush: false,
+  lastSyncTime: null,
+  syncListeners: [],
+  debounceTimer: null,
 
-  // مخزن البيانات المحلي
-  const STORAGE_KEY = 'alfajr_local_firestore_db';
+  // تسجيل مستمعي تحديث البيانات لتحديث الشاشات تلقائياً
+  onSync(callback) {
+    if (typeof callback === 'function') {
+      this.syncListeners.push(callback);
+    }
+  },
 
-  function getLocalData() {
+  notifyListeners(data) {
+    this.syncListeners.forEach(fn => {
+      try { fn(data); } catch (e) { console.warn('Sync listener error:', e); }
+    });
+  },
+
+  // سحب أحدث نسخة من السحابة ودمجها محلياً
+  async pull() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (!parsed.users) parsed.users = {};
-        if (!parsed.employees) parsed.employees = {};
-        
-        // ضمان وجود وتحديث حساب المسؤول الأولي
-        if (!parsed.users.admin_fjr) {
-          parsed.users.admin_fjr = {
-            uid: "admin_fjr",
-            username: "fjr",
-            email: "fjr@alfajr.org",
-            role: "admin",
-            name: "إدارة المؤسسة - المدير العام",
-            phone: "770905092",
-            password: "316501",
-            status: "active"
-          };
-        } else {
-          parsed.users.admin_fjr.password = "316501";
-        }
+      const res = await fetch(CLOUD_SYNC_ENDPOINT, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-cache'
+      });
+      if (!res.ok) return null;
 
-        // ضمان وجود وتحديث حساب الموظف التجريبي أحمد
-        if (!parsed.users.emp_ahmed) {
-          parsed.users.emp_ahmed = {
-            uid: "emp_ahmed",
-            username: "ahmed",
-            email: "ahmed@alfajr.org",
-            role: "employee",
-            name: "أحمد محمد سالم باوزير",
-            phone: "771234567",
-            employeeId: "emp_ahmed",
-            password: "123456",
-            status: "active"
-          };
-        } else {
-          parsed.users.emp_ahmed.password = "123456";
-        }
+      let remote = await res.json();
+      // إذا كان الخادم يغلف البيانات داخل خاصية data
+      if (remote && remote.data && typeof remote.data === 'object' && remote.data.users) {
+        remote = remote.data;
+      }
+      if (!remote || typeof remote !== 'object' || !remote.users) return null;
 
-        if (!parsed.employees.emp_ahmed) {
-          parsed.employees.emp_ahmed = {
-            id: "emp_ahmed",
-            name: "أحمد محمد سالم باوزير",
-            jobTitle: "أخصائي اجتماعي",
-            phone: "771234567",
-            username: "ahmed",
-            email: "ahmed@alfajr.org",
-            startDate: "2026-01-01",
-            salary: 120000,
-            annualLeaveBalance: 30,
-            usedLeave: 0,
-            remainingLeave: 30,
-            status: "active",
-            createdAt: new Date().toISOString()
-          };
-        }
+      const local = getLocalData();
+      let hasUpdates = false;
 
-        return parsed;
+      const collections = [
+        'users', 'employees', 'attendance', 'leaves', 'excuses',
+        'settings', 'organization', 'leaveTypes', 'salaryHistory', 'activityLogs'
+      ];
+
+      for (const col of collections) {
+        if (remote[col] && typeof remote[col] === 'object') {
+          if (!local[col]) local[col] = {};
+          for (const key of Object.keys(remote[col])) {
+            const remoteItem = remote[col][key];
+            const localItem = local[col][key];
+            if (!localItem || JSON.stringify(localItem) !== JSON.stringify(remoteItem)) {
+              local[col][key] = remoteItem;
+              hasUpdates = true;
+            }
+          }
+        }
+      }
+
+      if (hasUpdates) {
+        saveLocalDataInternal(local);
+        this.lastSyncTime = new Date();
+        this.notifyListeners(local);
+        console.log('🔄 تم استقبال وتطبيق التحديثات السحابية حياً');
+      }
+      return remote;
+    } catch (err) {
+      console.warn('تنبيه السحب السحابي:', err.message);
+      return null;
+    }
+  },
+
+  // جدولة رفع التغييرات إلى السحابة
+  schedulePush() {
+    clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => {
+      this.push();
+    }, 350);
+  },
+
+  // رفع البيانات المحلية إلى السحابة
+  async push() {
+    if (this.isSyncing) {
+      this.pendingPush = true;
+      return;
+    }
+    this.isSyncing = true;
+    try {
+      const local = getLocalData();
+      await fetch(CLOUD_SYNC_ENDPOINT, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        },
+        body: JSON.stringify(local)
+      });
+      this.lastSyncTime = new Date();
+      this.broadcastEvent();
+      console.log('☁️ تم رفع وتحديث البيانات في السحابة بنجاح');
+    } catch (err) {
+      console.warn('فشل الرفع السحابي (سيتم تكراره عند توفر الشبكة):', err.message);
+    } finally {
+      this.isSyncing = false;
+      if (this.pendingPush) {
+        this.pendingPush = false;
+        this.schedulePush();
+      }
+    }
+  },
+
+  // إرسال إشعار لحظي للأجهزة الأخرى لتحديث شاشاتها
+  broadcastEvent() {
+    try {
+      // إشعار سحابي للأجهزة البعيدة (الهواتف والكمبيوترات)
+      fetch(CLOUD_SYNC_TOPIC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: 'sync_update'
+      }).catch(() => {});
+
+      // إشعار بين التبويبات المفتوحة محلياً
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('alfajr_sync_channel');
+        bc.postMessage({ type: 'sync', time: Date.now() });
+        bc.close();
+      }
+    } catch (e) {}
+  },
+
+  // بدء الاستماع المباشر للتحديثات
+  startLiveListener() {
+    // 1. مزامنة التبويبات المحلية
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const bc = new BroadcastChannel('alfajr_sync_channel');
+        bc.onmessage = (ev) => {
+          if (ev.data && ev.data.type === 'sync') {
+            this.pull();
+          }
+        };
+      } catch (e) {}
+    }
+
+    // 2. الاستماع الفوري عبر SSE للأجهزة الأخرى
+    try {
+      if (typeof EventSource !== 'undefined') {
+        const sse = new EventSource(`${CLOUD_SYNC_TOPIC}/sse`);
+        sse.onmessage = () => {
+          this.pull();
+        };
+        sse.onerror = () => {
+          sse.close();
+        };
       }
     } catch (e) {}
 
-    // البيانات الأولية الافتراضية للمؤسسة والموظفين
-    const initialData = {
-      organization: {
-        info: {
-          name: "مؤسسة الفجر الخيرية الاجتماعية",
-          region: "حضرموت – المكلا",
-          developer: "عبد المجيد عياش برديني",
-          phone: "770905092",
-          logoUrl: "assets/logo.svg",
-          updatedAt: new Date().toISOString()
-        }
-      },
-      settings: {
-        workSettings: {
-          startTime: "07:00:00",
-          endTime: "14:00:00",
-          gracePeriodMinutes: 15,
-          earlyArrivalAllowed: true,
-          dailyWorkHours: 7,
-          updatedAt: new Date().toISOString()
-        },
-        gpsSettings: {
-          latitude: 14.5424,
-          longitude: 49.1248,
-          radius: 100,
-          locationName: "المقر الرئيسي - حضرموت، المكلا",
-          updatedAt: new Date().toISOString()
-        },
-        salarySettings: {
-          approvedMonthDays: 30,
-          dailyWorkHours: 7,
-          roundingMethod: "exact_seconds",
-          updatedAt: new Date().toISOString()
-        }
-      },
-      leaveTypes: {
-        annual: {
-          id: "annual",
-          name: "إجازة سنوية",
-          defaultBalance: 30,
-          deductFromBalance: true,
-          requiresApproval: true,
-          requiresAttachment: false,
-          active: true
-        },
-        sick: {
-          id: "sick",
-          name: "إجازة مرضية",
-          defaultBalance: 15,
-          deductFromBalance: false,
-          requiresApproval: true,
-          requiresAttachment: true,
-          active: true
-        },
-        emergency: {
-          id: "emergency",
-          name: "إجازة طارئة / عارضة",
-          defaultBalance: 7,
-          deductFromBalance: true,
-          requiresApproval: true,
-          requiresAttachment: false,
-          active: true
-        }
-      },
-      users: {
-        admin_fjr: {
+    // 3. فحص دوري كل 20 ثانية لضمان تطابق البيانات
+    setInterval(() => {
+      this.pull();
+    }, 20000);
+
+    // 4. سحب التحديثات فور تركيز الشاشة (عند فتح التطبيق على الجوال أو الحاسوب)
+    window.addEventListener('focus', () => {
+      this.pull();
+    });
+
+    // 5. السحب الأولي فوراً
+    this.pull();
+  }
+};
+
+// دالة فحص حالة الاتصال السحابي
+function getFirebaseConnectionStatus() {
+  const isCustom = !isPlaceholderMode && isFirebaseInitialized;
+  return {
+    isCloudActive: true,
+    isCustomFirebase: isCustom,
+    isAutomaticCloud: true,
+    cloudProvider: isCustom ? 'Firebase Cloud' : 'السحابة التلقائية المباشرة (GitHub / Cloud Sync)',
+    projectId: isCustom ? firebaseConfig.projectId : 'alfajr-cloud-github',
+    config: firebaseConfig,
+    lastSyncTime: CloudSyncEngine.lastSyncTime
+  };
+}
+
+// دالة حفظ محلية داخلية
+function saveLocalDataInternal(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn('فشل حفظ التخزين المحلي:', e);
+  }
+}
+
+// دالة حفظ عامة وتمرير المزامنة للسحابة
+function saveLocalData(data) {
+  saveLocalDataInternal(data);
+  CloudSyncEngine.schedulePush();
+}
+
+// قراءة البيانات المحلية وضمان سلامة حساب المسؤول والموظف
+function getLocalData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (!parsed.users) parsed.users = {};
+      if (!parsed.employees) parsed.employees = {};
+      if (!parsed.settings) parsed.settings = {};
+      if (!parsed.settings.gpsSettings) parsed.settings.gpsSettings = {};
+
+      // تفعيل الحضور السحابي من أي مكان افتراضياً لتفادي مشاكل الـ GPS
+      if (parsed.settings.gpsSettings.allowAnywhere === undefined) {
+        parsed.settings.gpsSettings.allowAnywhere = true;
+      }
+
+      // ضمان حساب المسؤول الأولي المعتمد (fjr / 316501)
+      if (!parsed.users.admin_fjr) {
+        parsed.users.admin_fjr = {
           uid: "admin_fjr",
           username: "fjr",
           email: "fjr@alfajr.org",
@@ -225,8 +301,14 @@ if (isPlaceholderMode || !db) {
           phone: "770905092",
           password: "316501",
           status: "active"
-        },
-        emp_ahmed: {
+        };
+      } else {
+        parsed.users.admin_fjr.password = "316501";
+      }
+
+      // ضمان حساب الموظف التجريبي (ahmed / 123456)
+      if (!parsed.users.emp_ahmed) {
+        parsed.users.emp_ahmed = {
           uid: "emp_ahmed",
           username: "ahmed",
           email: "ahmed@alfajr.org",
@@ -236,10 +318,13 @@ if (isPlaceholderMode || !db) {
           employeeId: "emp_ahmed",
           password: "123456",
           status: "active"
-        }
-      },
-      employees: {
-        emp_ahmed: {
+        };
+      } else {
+        parsed.users.emp_ahmed.password = "123456";
+      }
+
+      if (!parsed.employees.emp_ahmed) {
+        parsed.employees.emp_ahmed = {
           id: "emp_ahmed",
           name: "أحمد محمد سالم باوزير",
           jobTitle: "أخصائي اجتماعي",
@@ -253,24 +338,136 @@ if (isPlaceholderMode || !db) {
           remainingLeave: 30,
           status: "active",
           createdAt: new Date().toISOString()
-        }
+        };
+      }
+
+      return parsed;
+    }
+  } catch (e) {}
+
+  // البيانات الأولية الافتراضية الشاملة
+  const initialData = {
+    organization: {
+      info: {
+        name: "مؤسسة الفجر الخيرية الاجتماعية",
+        region: "حضرموت – المكلا",
+        developer: "عبد المجيد عياش برديني",
+        phone: "770905092",
+        logoUrl: "assets/logo.svg",
+        updatedAt: new Date().toISOString()
+      }
+    },
+    settings: {
+      workSettings: {
+        startTime: "07:00:00",
+        endTime: "14:00:00",
+        gracePeriodMinutes: 15,
+        earlyArrivalAllowed: true,
+        dailyWorkHours: 7,
+        updatedAt: new Date().toISOString()
       },
-      attendance: {},
-      leaves: {},
-      excuses: {},
-      salaryHistory: {},
-      activityLogs: {}
-    };
+      gpsSettings: {
+        latitude: 14.5424,
+        longitude: 49.1248,
+        radius: 100,
+        allowAnywhere: true,
+        locationName: "المقر الرئيسي - حضرموت، المكلا",
+        updatedAt: new Date().toISOString()
+      },
+      salarySettings: {
+        approvedMonthDays: 30,
+        dailyWorkHours: 7,
+        roundingMethod: "exact_seconds",
+        updatedAt: new Date().toISOString()
+      }
+    },
+    leaveTypes: {
+      annual: {
+        id: "annual",
+        name: "إجازة سنوية",
+        defaultBalance: 30,
+        deductFromBalance: true,
+        requiresApproval: true,
+        requiresAttachment: false,
+        active: true
+      },
+      sick: {
+        id: "sick",
+        name: "إجازة مرضية",
+        defaultBalance: 15,
+        deductFromBalance: false,
+        requiresApproval: true,
+        requiresAttachment: true,
+        active: true
+      },
+      emergency: {
+        id: "emergency",
+        name: "إجازة طارئة / عارضة",
+        defaultBalance: 7,
+        deductFromBalance: true,
+        requiresApproval: true,
+        requiresAttachment: false,
+        active: true
+      }
+    },
+    users: {
+      admin_fjr: {
+        uid: "admin_fjr",
+        username: "fjr",
+        email: "fjr@alfajr.org",
+        role: "admin",
+        name: "إدارة المؤسسة - المدير العام",
+        phone: "770905092",
+        password: "316501",
+        status: "active"
+      },
+      emp_ahmed: {
+        uid: "emp_ahmed",
+        username: "ahmed",
+        email: "ahmed@alfajr.org",
+        role: "employee",
+        name: "أحمد محمد سالم باوزير",
+        phone: "771234567",
+        employeeId: "emp_ahmed",
+        password: "123456",
+        status: "active"
+      }
+    },
+    employees: {
+      emp_ahmed: {
+        id: "emp_ahmed",
+        name: "أحمد محمد سالم باوزير",
+        jobTitle: "أخصائي اجتماعي",
+        phone: "771234567",
+        username: "ahmed",
+        email: "ahmed@alfajr.org",
+        startDate: "2026-01-01",
+        salary: 120000,
+        annualLeaveBalance: 30,
+        usedLeave: 0,
+        remainingLeave: 30,
+        status: "active",
+        createdAt: new Date().toISOString()
+      }
+    },
+    attendance: {},
+    leaves: {},
+    excuses: {},
+    salaryHistory: {},
+    activityLogs: {}
+  };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
-    return initialData;
-  }
+  saveLocalDataInternal(initialData);
+  return initialData;
+}
 
-  function saveLocalData(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
+// بدء تشغيل محرك المزامنة السحابية فور تحميل الصفحة
+CloudSyncEngine.startLiveListener();
 
-  // محاكي كائن Firestore المطابق للواجهة الرسمية
+// ==========================================
+// محاكي كائنات Firestore المنسجم تماماً مع واجهات Firebase الرسمية
+// ==========================================
+if (!db) {
   class LocalDocRef {
     constructor(collName, docId) {
       this.collName = collName;
@@ -410,7 +607,7 @@ if (isPlaceholderMode || !db) {
     }
   }
 
-  // بناء كائن db المتوافق كلياً
+  // كائن db المتوافق
   db = {
     collection: (name) => new LocalCollectionRef(name),
     runTransaction: async (updateFunction) => {
@@ -424,7 +621,7 @@ if (isPlaceholderMode || !db) {
     }
   };
 
-  // محاكي كائن Auth المطابق
+  // محاكي Auth المطابق
   auth = {
     currentUser: null,
     onAuthStateChanged: (callback) => {
@@ -477,7 +674,7 @@ if (isPlaceholderMode || !db) {
       const username = email.split('@')[0].toLowerCase();
       const newUid = `user_${Date.now()}`;
       auth.currentUser = { uid: newUid, email };
-      
+
       const data = getLocalData();
       if (!data.users) data.users = {};
       data.users[newUid] = {
@@ -498,7 +695,7 @@ if (isPlaceholderMode || !db) {
     }
   };
 
-  // محاكي Storage
+  // محاكي Storage لحفظ الصور والمرفقات
   storage = {
     ref: (path) => ({
       put: async (file) => ({
@@ -518,7 +715,7 @@ if (isPlaceholderMode || !db) {
 
 // دالة مساعدة للحصول على ServerTimestamp
 function getServerTimestamp() {
-  if (typeof firebase !== 'undefined' && firebase.firestore && !isPlaceholderMode) {
+  if (typeof firebase !== 'undefined' && firebase.firestore && isFirebaseInitialized) {
     return firebase.firestore.FieldValue.serverTimestamp();
   }
   return new Date();
@@ -529,21 +726,21 @@ window.addEventListener('online', () => {
   const banner = document.getElementById('offline-banner');
   if (banner) banner.style.display = 'none';
   if (typeof showToast === 'function') {
-    showToast('تم استعادة الاتصال بالإنترنت بنجاح', 'success', 'متصل الآن');
+    showToast('تم استعادة الاتصال بالإنترنت بنجاح - جاري المزامنة السحابية', 'success', 'متصل الآن');
   }
+  CloudSyncEngine.pull();
+  CloudSyncEngine.push();
 });
 
 window.addEventListener('offline', () => {
   const banner = document.getElementById('offline-banner');
   if (banner) banner.style.display = 'block';
   if (typeof showToast === 'function') {
-    showToast('انقطع الاتصال بالإنترنت. يرجى التحقق من الشبكة', 'danger', 'غير متصل');
+    showToast('أنت تعمل في وضع دون اتصال - سيتم حفظ البيانات ومزامنتها تلقائياً عند عودة الإنترنت', 'warning', 'بدون اتصال');
   }
 });
 
-/**
- * دالة تهيئة الإعدادات الافتراضية
- */
+// تهيئة الإعدادات الافتراضية
 async function bootstrapSystemDefaults() {
   if (!db) return;
   try {

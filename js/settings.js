@@ -36,7 +36,7 @@ async function loadAllSystemSettings() {
       latitude: 14.5424,
       longitude: 49.1248,
       radius: 100,
-      allowAnywhere: false
+      allowAnywhere: true
     };
 
     const salary = salaryDoc.exists ? salaryDoc.data() : {
