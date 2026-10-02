@@ -1,0 +1,201 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * نظام مؤسسة الفجر الخيرية الاجتماعية
+     * قواعد أمان Cloud Firestore الرسمية الصارمة (firestore.rules)
+     * مطور الموقع: عبد المجيد عياش بارديني (770905092)
+     */
+
+    // ==========================================
+    // الدوال المساعدة للتحقق الأمني
+    // ==========================================
+
+    // التحقق من تسجيل الدخول
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // التحقق من صلاحية المدير (Admin)
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.email == 'fjr@alfajr.org' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // التحقق من ملكية الحساب الشخصي
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ==========================================
+    // 1. مجموعة المستخدمين (users)
+    // ==========================================
+    match /users/{userId} {
+      // قراءة: المدير يقرأ الجميع، الموظف يقرأ حسابه فقط
+      allow read: if isAdmin() || isOwner(userId);
+      
+      // إنشاء: المدير، أو تهيئة الحساب الأولي fjr
+      allow create: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      
+      // تعديل: المدير يملك التعديل الكامل، الموظف يعدل اسمه وهاتفه دون تعديل الدور (role) أو الحالة (status)
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.status == resource.data.status
+      );
+
+      // حذف: المدير فقط
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 2. مجموعة الموظفين (employees)
+    // ==========================================
+    match /employees/{employeeId} {
+      // قراءة: المدير، أو الموظف لملفه الشخصي فقط (يمنع قراءة بيانات ورواتب الموظفين الآخرين)
+      allow read: if isAdmin() || isOwner(employeeId);
+      
+      // إنشاء وتعديل وحذف: المدير فقط (الموظف لا يستطيع تعديل راتبه أو أرصدة إجازاته نهائياً)
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 3. سجلات الحضور والانصراف (attendance)
+    // ==========================================
+    match /attendance/{recordId} {
+      // قراءة: المدير، أو الموظف لسجلاته الشخصية فقط
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.employeeId == request.auth.uid);
+
+      // تسجيل حضور جديد (Check-in):
+      // يسمح للموظف بإنشاء سجله الشخصي فقط لهذا اليوم
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.employeeId == request.auth.uid &&
+        request.resource.data.checkIn != null
+      );
+
+      // تحديث السجل (Check-out):
+      // يسمح للموظف فقط بتسجيل وقت الانصراف وموقعه إذا كان السجل له،
+      // مع منع التلاعب بوقت الحضور أو ثواني التأخير أو قيمة الخصم أو العذر المعتمد
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.employeeId == request.auth.uid &&
+        request.resource.data.employeeId == resource.data.employeeId &&
+        request.resource.data.checkIn == resource.data.checkIn &&
+        request.resource.data.lateSeconds == resource.data.lateSeconds &&
+        request.resource.data.chargeableLateSeconds == resource.data.chargeableLateSeconds &&
+        request.resource.data.lateDeduction == resource.data.lateDeduction &&
+        request.resource.data.excuseApproved == resource.data.excuseApproved &&
+        resource.data.checkOut == null &&
+        request.resource.data.checkOut != null
+      );
+
+      // الحذف: المدير فقط
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 4. مجموعة الإجازات (leaves)
+    // ==========================================
+    match /leaves/{leaveId} {
+      // قراءة: المدير أو صاحب الطلب
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.employeeId == request.auth.uid);
+
+      // تقديم طلب إجازة جديد: الموظف يقدم طلبه بحالة مبدئية pending (قيد المراجعة)
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.employeeId == request.auth.uid &&
+        request.resource.data.status == 'pending'
+      );
+
+      // اعتماد أو رفض الإجازة وحذفها: المدير فقط
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 5. أنواع الإجازات المعتمدة (leaveTypes)
+    // ==========================================
+    match /leaveTypes/{typeId} {
+      // قراءة: متاحة لجميع المستخدمين المسجلين لعرض الخيارات
+      allow read: if isAuthenticated();
+
+      // إدارة الأنواع (إضافة، تعديل، حذف): المدير فقط
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 6. مجموعة الأعذار (excuses)
+    // ==========================================
+    match /excuses/{excuseId} {
+      // قراءة: المدير أو صاحب العذر
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.employeeId == request.auth.uid);
+
+      // تقديم عذر جديد: الموظف يقدم عذره بحالة pending
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.employeeId == request.auth.uid &&
+        request.resource.data.status == 'pending'
+      );
+
+      // قبول أو رفض العذر وتعديله: المدير فقط
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 7. تاريخ تعديلات الرواتب (salaryHistory)
+    // ==========================================
+    match /salaryHistory/{historyId} {
+      // قراءة: المدير فقط، أو الموظف لسجله الشخصي
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.employeeId == request.auth.uid);
+
+      // كتابة: المدير فقط
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 8. إعدادات النظام (settings: workSettings, gpsSettings, salarySettings)
+    // ==========================================
+    match /settings/{settingDoc} {
+      // قراءة: متاحة للمستخدمين المسجلين لمعرفة مواعيد الدوام ونطاق GPS وقواعد الحساب
+      allow read: if isAuthenticated();
+
+      // تعديل الإعدادات: المدير فقط
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 9. بيانات المؤسسة والشعار (organization)
+    // ==========================================
+    match /organization/{orgDoc} {
+      // قراءة: عامة لعرض اسم وشعار المؤسسة في شاشة تسجيل الدخول
+      allow read: if true;
+
+      // تعديل: المدير فقط
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 10. سجل النشاط والتدقيق الإداري (activityLogs)
+    // ==========================================
+    match /activityLogs/{logId} {
+      // قراءة: المدير فقط (لا يستطيع الموظف قراءة سجل النشاط)
+      allow read: if isAdmin();
+
+      // إضافة: مسموح للمسجلين لتوثيق العمليات المنفذة
+      allow create: if isAuthenticated();
+
+      // التعديل والحذف: ممنوع لحماية نزاهة التدقيق الإداري (Immutable Audit Trail)
+      allow update, delete: if false;
+    }
+
+    // القاعدة الافتراضية لأي مجموعة أخرى غير معلنة
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

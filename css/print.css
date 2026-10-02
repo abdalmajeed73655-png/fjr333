@@ -1,0 +1,182 @@
+﻿/* ==========================================================================
+   نظام مؤسسة الفجر الخيرية الاجتماعية
+   تنسيقات الطباعة الرسمية القياسية A4 (print.css)
+   مطور الموقع: عبد المجيد عياش برديني (770905092)
+   ========================================================================== */
+
+@page {
+  size: A4 portrait;
+  margin: 15mm 12mm 15mm 12mm;
+}
+
+@media print {
+  /* إخفاء العناصر غير المرغوبة أثناء الطباعة */
+  .sidebar,
+  .topbar,
+  .btn,
+  .filter-bar,
+  .tabs-nav,
+  .modal-overlay,
+  #toast-container,
+  #offline-banner,
+  .no-print,
+  .pagination,
+  .menu-toggle {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+    line-height: 1.4;
+    direction: rtl;
+    text-align: right;
+  }
+
+  .main-content {
+    margin-right: 0 !important;
+    padding: 0 !important;
+  }
+
+  .page-container {
+    padding: 0 !important;
+  }
+
+  /* ترويسة التقرير الرسمية المطبوعة */
+  .print-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #16a34a;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  .print-header .org-info {
+    text-align: right;
+  }
+
+  .print-header .org-title {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #15803d;
+    margin-bottom: 3px;
+  }
+
+  .print-header .org-subtitle {
+    font-size: 10pt;
+    color: #ea580c;
+    font-weight: 600;
+  }
+
+  .print-header .org-region {
+    font-size: 9pt;
+    color: #475569;
+  }
+
+  .print-header .print-logo {
+    height: 65px;
+    width: auto;
+  }
+
+  .print-report-meta {
+    display: block !important;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    font-size: 9.5pt;
+  }
+
+  .print-report-meta .meta-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  /* جداول الطباعة */
+  .custom-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+    page-break-inside: auto;
+  }
+
+  .custom-table thead {
+    display: table-header-group;
+  }
+
+  .custom-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .custom-table th,
+  .custom-table td {
+    border: 1px solid #94a3b8 !important;
+    padding: 6px 8px !important;
+    color: #000000 !important;
+    text-align: right;
+  }
+
+  .custom-table th {
+    background-color: #f1f5f9 !important;
+    font-weight: bold;
+    color: #0f172a !important;
+  }
+
+  /* شارات الحالة المطبوعة */
+  .badge {
+    border: 1px solid #64748b !important;
+    background: transparent !important;
+    color: #000000 !important;
+    padding: 2px 4px !important;
+    font-size: 8pt !important;
+  }
+
+  /* ملخص الأرقام */
+  .print-summary-box {
+    display: flex !important;
+    justify-content: space-between;
+    margin-top: 15px;
+    padding: 10px;
+    border: 1.5px solid #16a34a;
+    border-radius: 6px;
+    background-color: #f0fdf4 !important;
+    font-size: 10pt;
+    font-weight: bold;
+  }
+
+  /* تذييل الطباعة الرسمي الثابت */
+  .print-footer {
+    display: block !important;
+    margin-top: 25px;
+    padding-top: 10px;
+    border-top: 1px dashed #94a3b8;
+    text-align: center;
+    font-size: 8.5pt;
+    color: #475569;
+  }
+
+  .developer-footer {
+    display: block !important;
+    border-top: 1px solid #cbd5e1;
+    margin-top: 20px;
+    padding-top: 8px;
+    text-align: center;
+    font-size: 8.5pt;
+    color: #334155;
+  }
+}
+
+/* في العرض العادي، نخفي ترويسة وتذييل الطباعة الخاص */
+@media screen {
+  .print-header,
+  .print-report-meta,
+  .print-summary-box,
+  .print-footer {
+    display: none;
+  }
+}

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="gradGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d" />
+      <stop offset="100%" stop-color="#16a34a" />
+    </linearGradient>
+    <linearGradient id="gradOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+    <linearGradient id="gradSun" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ea580c" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.95" />
+    </linearGradient>
+    <filter id="badgeShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <!-- Centered Emblem Badge (No text) -->
+  <g filter="url(#badgeShadow)">
+    <!-- Outer Rings -->
+    <circle cx="60" cy="60" r="54" fill="#ffffff" stroke="#16a34a" stroke-width="3" />
+    <circle cx="60" cy="60" r="49" fill="#f0fdf4" stroke="#ea580c" stroke-width="1.2" stroke-dasharray="3,2" />
+
+    <!-- Rising Sun Rays (Fajr - Dawn) -->
+    <path d="M 60 25 L 60 16 M 43 31 L 36 24 M 77 31 L 84 24 M 30 44 L 21 40 M 90 44 L 99 40" stroke="#f97316" stroke-width="2.8" stroke-linecap="round" />
+    
+    <!-- Sun Core -->
+    <path d="M 37 60 A 23 23 0 0 1 83 60 Z" fill="url(#gradSun)" />
+
+    <!-- Caring Charity Hands / Protective Crescent Arc -->
+    <path d="M 28 67 C 28 87, 48 99, 60 99 C 72 99, 92 87, 92 67 C 80 81, 68 83, 60 77 C 52 83, 40 81, 28 67 Z" fill="url(#gradGreen)" />
+    
+    <!-- Inner Sprout / Giving Seed -->
+    <path d="M 60 74 C 54 62, 57 51, 60 46 C 63 51, 66 62, 60 74 Z" fill="#22c55e" />
+    <circle cx="60" cy="44" r="4" fill="#f59e0b" />
+  </g>
+</svg>

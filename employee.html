@@ -1,0 +1,465 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بوابة الموظف | مؤسسة الفجر الخيرية الاجتماعية</title>
+  
+  <!-- ملفات التنسيق -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+
+  <!-- شريط تنبيه انقطاع الإنترنت -->
+  <div id="offline-banner">🔴 لا يوجد اتصال بالإنترنت. يرجى التحقق من الاتصال والمحاولة مرة أخرى.</div>
+
+  <div class="app-layout">
+    
+    <!-- القائمة الجانبية (Sidebar للموظف) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img src="assets/logo.svg" alt="شعار الفجر" class="sidebar-logo">
+        <div class="sidebar-brand">
+          مؤسسة الفجر
+          <small>بوابة الموظف</small>
+        </div>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li class="nav-item">
+          <a class="nav-link active" data-tab="attendance-action">
+            <span class="nav-icon">📍</span>
+            <span>تسجيل الحضور اليومي</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="my-attendance">
+            <span class="nav-icon">📋</span>
+            <span>سجل حضوري</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="my-salary">
+            <span class="nav-icon">💰</span>
+            <span>راتبي ومسير الخصومات</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="my-leaves">
+            <span class="nav-icon">🏖️</span>
+            <span>إجازاتي والأرصدة</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="request-leave">
+            <span class="nav-icon">📝</span>
+            <span>تقديم طلب إجازة</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="request-excuse">
+            <span class="nav-icon">⚠️</span>
+            <span>تقديم طلب عذر</span>
+          </a>
+        </li>
+        <li class="nav-item" style="margin-top: auto;">
+          <a class="nav-link" onclick="handleLogout()" style="color: var(--danger);">
+            <span class="nav-icon">🚪</span>
+            <span>تسجيل الخروج</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="user-avatar" id="emp-avatar">م</div>
+          <div class="user-info">
+            <div class="user-name" id="display-user-name">جاري التحميل...</div>
+            <div class="user-role" id="display-user-role">موظف المؤسسة</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- خلفية تعتيم الشاشة عند فتح القائمة على الجوال -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- المحتوى الرئيسي (Main Content) -->
+    <main class="main-content">
+      
+      <!-- الشريط العلوي (Topbar) -->
+      <header class="topbar">
+        <div class="topbar-right">
+          <button class="menu-toggle" id="menu-toggle" aria-label="فتح القائمة">☰</button>
+          <h2 class="page-title">
+            أهلاً وسهلاً، <span id="emp-welcome-name" style="color: var(--primary-dark);">الموظف</span>
+          </h2>
+        </div>
+
+        <div class="live-clock-container">
+          <span class="clock-icon">🕒</span>
+          <span class="live-time" id="live-clock-time">--:--:-- --</span>
+          <span class="live-date" id="live-clock-date">جاري التحميل...</span>
+        </div>
+      </header>
+
+      <div class="page-container">
+
+        <!-- ==============================================
+             1. تبويب تسجيل الحضور الميداني (Check-in / Check-out)
+             ============================================== -->
+        <section id="tab-pane-attendance-action" class="employee-tab-pane">
+          <div class="attendance-hero-card">
+            <h1 class="welcome-title">تسجيل الحضور والانصراف الميداني عبر GPS</h1>
+            <p class="welcome-subtitle">
+              المسمى الوظيفي: <strong id="emp-welcome-job">أخصائي اجتماعي</strong> | 
+              المقر: <strong>مؤسسة الفجر الخيرية الاجتماعية (حضرموت – المكلا)</strong>
+            </p>
+
+            <!-- أزرار الحضور والانصراف الرئيسية -->
+            <div class="attendance-buttons-wrapper">
+              <button class="btn-checkin" id="btn-action-checkin">
+                <span>🟢</span>
+                <span>تحقق في</span>
+              </button>
+
+              <button class="btn-checkout" id="btn-action-checkout" disabled>
+                <span>🟠</span>
+                <span>الدفع</span>
+              </button>
+            </div>
+
+            <!-- مؤشر حالة GPS واليوم -->
+            <div style="margin-top: 1rem;">
+              <div class="gps-status-badge">
+                <span class="gps-dot active"></span>
+                <span id="today-status-text">جاري فحص حالة الحضور اليومي...</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+              💡 <strong>تنبيه:</strong> يتطلب التسجيل تفعيل خاصية تحديد الموقع (GPS) والتواجد داخل النطاق الجغرافي المعتمد للمؤسسة.
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================
+             2. تبويب "💰 راتبي" المخصص والحسابات الدقيقة
+             ============================================== -->
+        <section id="tab-pane-my-salary" class="employee-tab-pane" style="display: none;">
+          <div class="salary-overview-card">
+            <div class="salary-hero-header">
+              <div>
+                <h2 style="font-size: 1.4rem; color: var(--primary-dark); font-weight: 800;">💰 لوحة مسير راتبي واستحقاقاتي</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">تُحسب الأجور والخصومات بدقة متناهية بالثواني والدقائق وفق قواعد الدوام المعتمدة.</p>
+              </div>
+
+              <!-- محدد الفترة المالية -->
+              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer;">
+                  <input type="radio" name="salary-period-radio" value="this_month" checked> هذا الشهر
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer;">
+                  <input type="radio" name="salary-period-radio" value="prev_month"> الشهر السابق
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer;">
+                  <input type="radio" name="salary-period-radio" value="custom"> تحديد فترة
+                </label>
+              </div>
+            </div>
+
+            <!-- نطاق التواريخ المخصص (يظهر عند الاختيار) -->
+            <div id="salary-custom-dates" style="display: none; gap: 0.75rem; align-items: center; margin-bottom: 1rem; background: var(--bg-muted); padding: 0.75rem; border-radius: var(--radius-md);">
+              <label class="form-label" style="margin: 0;">من:</label>
+              <input type="date" id="salary-filter-start" class="form-control" style="max-width: 160px;">
+              <label class="form-label" style="margin: 0;">إلى:</label>
+              <input type="date" id="salary-filter-end" class="form-control" style="max-width: 160px;">
+              <button class="btn btn-primary btn-sm" id="btn-apply-custom-salary">تطبيق</button>
+            </div>
+
+            <!-- بطاقات مؤشرات الراتب -->
+            <div class="salary-metric-grid">
+              <div class="salary-metric-box">
+                <div class="metric-title">الراتب الأساسي</div>
+                <div class="metric-value" id="my-base-salary">0 ريال</div>
+              </div>
+
+              <div class="salary-metric-box">
+                <div class="metric-title">الأجر اليومي (30 يوماً)</div>
+                <div class="metric-value" id="my-daily-wage">0 ريال</div>
+              </div>
+
+              <div class="salary-metric-box">
+                <div class="metric-title">أجر الساعة (7 ساعات)</div>
+                <div class="metric-value" id="my-hourly-wage">0 ريال</div>
+              </div>
+
+              <div class="salary-metric-box">
+                <div class="metric-title">أجر الدقيقة</div>
+                <div class="metric-value" id="my-minute-wage">0 ريال</div>
+              </div>
+
+              <div class="salary-metric-box">
+                <div class="metric-title">إجمالي دقائق التأخير</div>
+                <div class="metric-value" id="my-total-late-mins">0 دقيقة</div>
+              </div>
+
+              <div class="salary-metric-box deductions">
+                <div class="metric-title">إجمالي الخصومات</div>
+                <div class="metric-value" id="my-total-deductions">0 ريال</div>
+              </div>
+
+              <div class="salary-metric-box net-salary">
+                <div class="metric-title">صافي الراتب المستحق</div>
+                <div class="metric-value" id="my-net-salary">0 ريال</div>
+              </div>
+            </div>
+
+            <!-- جدول سجل التأخير والخصومات -->
+            <div>
+              <div class="card-header" style="margin-bottom: 1rem; padding-bottom: 0.5rem;">
+                <h3 class="card-title">📋 سجل التأخير والخصومات اليومية</h3>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>التاريخ</th>
+                      <th>وقت الحضور</th>
+                      <th>التأخير الفعلي</th>
+                      <th>التأخير المحتسب</th>
+                      <th>أجر الدقيقة</th>
+                      <th>قيمة الخصم</th>
+                    </tr>
+                  </thead>
+                  <tbody id="salary-deductions-table-body">
+                    <!-- يتم الملء تلقائياً -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ==============================================
+             3. تبويب: 📋 سجل حضوري
+             ============================================== -->
+        <section id="tab-pane-my-attendance" class="employee-tab-pane" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📋 سجل حضوري وانصرافي خلال الشهر الحالي</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>وقت الحضور</th>
+                    <th>وقت الانصراف</th>
+                    <th>التأخير المحتسب</th>
+                    <th>المغادرة المبكرة</th>
+                    <th>الخصم المترتب</th>
+                    <th>الحالة</th>
+                  </tr>
+                </thead>
+                <tbody id="my-attendance-table-body">
+                  <!-- سجلات الحضور الشخصية -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================
+             4. تبويب: 🏖️ إجازاتي والأرصدة
+             ============================================== -->
+        <section id="tab-pane-my-leaves" class="employee-tab-pane" style="display: none;">
+          <div class="kpi-grid">
+            <div class="kpi-card green">
+              <div class="kpi-icon-wrapper">🏖️</div>
+              <div class="kpi-details">
+                <div class="kpi-title">رصيد الإجازة السنوية</div>
+                <div class="kpi-value" id="my-leave-annual-balance">30 يوم</div>
+              </div>
+            </div>
+
+            <div class="kpi-card orange">
+              <div class="kpi-icon-wrapper">📅</div>
+              <div class="kpi-details">
+                <div class="kpi-title">الإجازات المستخدمة</div>
+                <div class="kpi-value" id="my-leave-used">0 يوم</div>
+              </div>
+            </div>
+
+            <div class="kpi-card blue">
+              <div class="kpi-icon-wrapper">✨</div>
+              <div class="kpi-details">
+                <div class="kpi-title">الإجازات المتبقية</div>
+                <div class="kpi-value" id="my-leave-remaining">30 يوم</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📜 سجل طلبات الإجازة السابقة</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>نوع الإجازة</th>
+                    <th>من تاريخ</th>
+                    <th>إلى تاريخ</th>
+                    <th>عدد الأيام</th>
+                    <th>السبب</th>
+                    <th>الحالة</th>
+                  </tr>
+                </thead>
+                <tbody id="my-leaves-table-body">
+                  <!-- طلبات الإجازات السابقة -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================
+             5. تبويب: 📝 تقديم طلب إجازة
+             ============================================== -->
+        <section id="tab-pane-request-leave" class="employee-tab-pane" style="display: none;">
+          <div class="card" style="max-width: 650px; margin: auto;">
+            <div class="card-header">
+              <h3 class="card-title">📝 نموذج طلب إجازة جديد</h3>
+            </div>
+            <form id="leave-request-form">
+              <div class="form-group">
+                <label class="form-label required" for="request-leave-type">نوع الإجازة</label>
+                <select id="request-leave-type" class="form-select" required></select>
+              </div>
+
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label required" for="request-leave-start">تاريخ بداية الإجازة</label>
+                  <input type="date" id="request-leave-start" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label required" for="request-leave-end">تاريخ نهاية الإجازة</label>
+                  <input type="date" id="request-leave-end" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required" for="request-leave-reason">سبب الإجازة</label>
+                <textarea id="request-leave-reason" class="form-control" placeholder="يرجى كتابة سبب طلب الإجازة بالتفصيل..." required></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block btn-lg">
+                إرسال طلب الإجازة للإدارة
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- ==============================================
+             6. تبويب: ⚠️ تقديم طلب عذر
+             ============================================== -->
+        <section id="tab-pane-request-excuse" class="employee-tab-pane" style="display: none;">
+          <div class="card" style="max-width: 650px; margin: auto; margin-bottom: 2rem;">
+            <div class="card-header">
+              <h3 class="card-title">⚠️ نموذج تقديم طلب عذر (تأخير / انصراف مبكر)</h3>
+            </div>
+            <form id="excuse-request-form">
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label required" for="request-excuse-type">نوع العذر</label>
+                  <select id="request-excuse-type" class="form-select" required>
+                    <option value="late_checkin">عذر تأخير في الحضور</option>
+                    <option value="early_checkout">عذر مغادرة مبكرة قبل نهاية الدوام</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label required" for="request-excuse-date">تاريخ اليوم المعني</label>
+                  <input type="date" id="request-excuse-date" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="request-excuse-time">وقت الوصول أو الخروج الفعلي</label>
+                <input type="time" step="1" id="request-excuse-time" class="form-control">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required" for="request-excuse-reason">السبب الرئيسي</label>
+                <input type="text" id="request-excuse-reason" class="form-control" placeholder="مثال: عطل مفاجئ في وسيلة المواصلات" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="request-excuse-notes">التوضيح والتفاصيل</label>
+                <textarea id="request-excuse-notes" class="form-control" placeholder="توضيح الظروف التي دعت للتأخير أو المغادرة المبكرة..."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-accent btn-block btn-lg">
+                إرسال طلب العذر للإدارة
+              </button>
+            </form>
+          </div>
+
+          <!-- قائمة الأعذار السابقة -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📜 سجل الأعذار السابقة وحالتها</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>نوع العذر</th>
+                    <th>التاريخ</th>
+                    <th>السبب</th>
+                    <th>التوضيح</th>
+                    <th>الحالة</th>
+                  </tr>
+                </thead>
+                <tbody id="my-excuses-table-body">
+                  <!-- قائمة الأعذار الشخصية -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- تذييل الصفحة -->
+      <footer class="developer-footer">
+        مؤسسة الفجر الخيرية الاجتماعية | حضرموت – المكلا<br>
+        مطور الموقع / <strong>عبد المجيد عياش برديني</strong> — <span class="phone">770905092</span>
+      </footer>
+
+    </main>
+  </div>
+
+  <!-- حاوية إشعارات التوست -->
+  <div id="toast-container"></div>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+  <!-- ملفات النظام -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/attendance.js"></script>
+  <script src="js/salary.js"></script>
+  <script src="js/leaves.js"></script>
+  <script src="js/excuses.js"></script>
+  <script src="js/employee.js"></script>
+</body>
+</html>

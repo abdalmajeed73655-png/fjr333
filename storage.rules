@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // دالة التحقق من تسجيل الدخول
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // دالة التحقق من المسؤول
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.email == 'fjr@alfajr.org'
+      );
+    }
+
+    // شعار المؤسسة
+    match /organization/{allPaths=**} {
+      allow read: if true; // متاح للعرض في جميع الصفحات بما فيها تسجيل الدخول
+      allow write: if isAdmin();
+    }
+
+    // مرفقات الإجازات والأعذار وصور الموظفين
+    match /attachments/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin())
+                    && request.resource.size < 5 * 1024 * 1024; // حد أقصى 5 ميجابايت للمرفق
+    }
+
+    // القاعدة الافتراضية
+    match /{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

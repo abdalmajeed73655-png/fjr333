@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مؤسسة الفجر الخيرية الاجتماعية | توجيه النظام</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // توجيه فوري وسريع 0 ميلي ثانية وبدون أي انتظار خارجي
+    (function() {
+      try {
+        var role = localStorage.getItem('alfajr_role');
+        var uid = localStorage.getItem('alfajr_uid');
+        if (uid && role === 'admin') {
+          window.location.replace('admin.html');
+          return;
+        } else if (uid && role === 'employee') {
+          window.location.replace('employee.html');
+          return;
+        }
+      } catch (e) {}
+      window.location.replace('login.html');
+    })();
+  </script>
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #fff7ed 100%);
+      text-align: center;
+      margin: 0;
+      padding: 1rem;
+    }
+    .splash-box {
+      background: #ffffff;
+      padding: 2.5rem 2rem;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      max-width: 440px;
+      width: 90%;
+    }
+    .splash-logo {
+      height: 80px;
+      max-width: 100%;
+      object-fit: contain;
+      margin-bottom: 1rem;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid var(--primary-light);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 1.5rem auto 1rem;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="splash-box">
+    <img src="assets/logo.svg" alt="شعار المؤسسة" class="splash-logo" id="site-logo">
+    <h2 style="font-size: 1.35rem; color: var(--primary-dark); margin-bottom: 0.35rem;">مؤسسة الفجر الخيرية الاجتماعية</h2>
+    <p style="font-size: 0.92rem; color: var(--accent); font-weight: 600;">نظام إدارة حضور الموظفين وإجازاتهم ورواتبهم</p>
+    <div class="spinner"></div>
+    <p style="color: var(--text-muted); margin-bottom: 1.25rem;">جاري توجيهك إلى صفحة النظام...</p>
+    <a href="login.html" class="btn btn-primary btn-sm" style="display: inline-block;">الانتقال لصفحة تسجيل الدخول مباشرة</a>
+  </div>
+
+  <script src="js/utils.js"></script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>تسجيل الدخول | مؤسسة الفجر الخيرية الاجتماعية</title>
+  
+  <!-- ملفات التنسيق -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #fff7ed 100%);
+      padding: 0;
+      margin: 0;
+    }
+
+    .login-container {
+      max-width: 440px;
+      width: 100%;
+      margin: auto;
+      padding: 2.5rem 1.25rem 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .login-brand-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-logo {
+      height: 110px;
+      max-width: 100%;
+      object-fit: contain;
+      margin: 0 auto;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
+      transition: transform 0.2s ease;
+    }
+
+    .login-logo:hover {
+      transform: scale(1.03);
+    }
+
+    .login-card {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 10px 25px -5px rgba(22, 163, 74, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border);
+      padding: 2.25rem 2rem;
+      position: relative;
+    }
+
+    .login-clock-box {
+      background-color: var(--bg-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .login-clock-box .live-time {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+      letter-spacing: 0.5px;
+    }
+
+    .login-clock-box .live-date {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-right: none;
+      padding-right: 0;
+    }
+
+    .remember-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      font-size: 0.92rem;
+    }
+
+    .remember-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text-muted);
+    }
+
+    .remember-label input {
+      accent-color: var(--primary);
+      width: 17px;
+      height: 17px;
+      cursor: pointer;
+    }
+
+    /* تحسين التجاوب للهواتف */
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 1.75rem 1rem 1rem;
+      }
+      .login-card {
+        padding: 1.75rem 1.25rem;
+        border-radius: var(--radius-md);
+      }
+      .login-logo {
+        height: 90px;
+      }
+      .login-clock-box .live-time {
+        font-size: 1.05rem;
+      }
+      .login-clock-box .live-date {
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- شريط تنبيه انقطاع الإنترنت -->
+  <div id="offline-banner">🔴 لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى.</div>
+
+  <!-- الحاوية الرئيسية لتسجيل الدخول -->
+  <div class="login-container">
+    <!-- الشعار المعتمد متوسط وبارز -->
+    <div class="login-brand-header">
+      <img src="assets/logo.svg" alt="شعار مؤسسة الفجر الخيرية الاجتماعية" class="login-logo" id="main-login-logo">
+    </div>
+
+    <div class="login-card">
+      <!-- الساعة المباشرة باللغة العربية ونظام 12 ساعة مع الثواني -->
+      <div class="login-clock-box">
+        <div class="live-time" id="live-clock-time">--:--:-- --</div>
+        <div class="live-date" id="live-clock-date">جاري تحميل التاريخ...</div>
+      </div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label required" for="login-username">اسم المستخدم</label>
+          <input type="text" id="login-username" class="form-control" placeholder="أدخل اسم المستخدم" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required" for="login-password">كلمة المرور</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <div class="remember-row">
+          <label class="remember-label">
+            <input type="checkbox" id="login-remember" checked>
+            <span>☑ تذكرني</span>
+          </label>
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block btn-lg">
+          🟢 تسجيل الدخول
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- تذييل معلومات المطور المعتمد الثابت -->
+  <footer class="developer-footer">
+    مؤسسة الفجر الخيرية الاجتماعية | حضرموت – المكلا<br>
+    مطور الموقع / <strong>عبد المجيد عياش برديني</strong> — <span class="phone">770905092</span>
+  </footer>
+
+  <!-- حاوية التوست -->
+  <div id="toast-container"></div>
+
+  <!-- Firebase CDN (Compat Mode) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+  <!-- ملفات جافاسكريبت النظام -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // معالجة نموذج تسجيل الدخول
+      const form = document.getElementById('login-form');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const remember = document.getElementById('login-remember').checked;
+        const btn = document.getElementById('btn-login-submit');
+
+        btn.disabled = true;
+        btn.innerHTML = 'جاري التحقق والدخول...';
+
+        const success = await handleLogin(username, password, remember);
+        if (!success) {
+          btn.disabled = false;
+          btn.innerHTML = '🟢 تسجيل الدخول';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
